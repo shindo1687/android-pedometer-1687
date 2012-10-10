@@ -1,0 +1,26 @@
+
+- MainActivity
+	onCreate(): 初期化処理
+	onResume(): サービスとメッセージのやり取りを確立するため bindService() を行う
+		サービスが起動していない場合、ここでサービスが開始される
+	onPause(): サービスとのやり取りを解除するため unbindService()
+		startServie()が呼ばれていない場合はサービスが終了する
+		呼ばれている場合、サービスは起動したまま。
+	ボタン[サービス開始]: startService()
+		サービスは既に起動している。onStartCommand()が呼ばれる
+	ボタン[サービス停止]: stopService()
+		この状態でActivityの onPause() が呼ばれると、サービスが終了する
+	
+- SensorService
+	onCreate(): 初期化処理
+	onStartCommand(): センサーの計測を開始する
+		計測を止めることはないので、Activityからは解除しない
+		強制終了された場合に再起動するよう、START_STICKY を返す
+	onDestroy(): センサーの計測を停止する  
+
+■サービスの終了
+システムによってサービスが強制終了されると、onStartCommand()が呼び出される。
+※再起動されるのはサービスのみで、Activityは開始されない。
+
+SensorService.onCreate()
+SensorService.onStartCommand(): start id 2: null
