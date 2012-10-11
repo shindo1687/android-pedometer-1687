@@ -18,7 +18,7 @@ public class DataProcessor implements Runnable {
 	private boolean _enableFilter = false;	//	ローパスフィルタを有効にする
 	private double _filterRate = 0.9;		//	ローパスフィルタ
 	
-	private double _minimumAmp = 0.5;		//	波として必要な振幅
+	private DataProcessSettings _setting = new DataProcessSettings();	//	データ処理の設定
 	
 	private int	_count = 0;	//	計測した歩数
 	
@@ -66,7 +66,10 @@ public class DataProcessor implements Runnable {
 	}
 	
 	public DataProcessor() {
+		//	サービスからデータを受け取るキューを生成
 		_queue = new ArrayBlockingQueue<SensorData>(_queueSize);
+		//	データ処理の設定を初期化
+		_setting.setMinimumAmp(0.5);
 	}
 	
 	public void setClientMessenger(ClientMessenger messenger) {
@@ -79,6 +82,10 @@ public class DataProcessor implements Runnable {
 	
 	public int getCount() {
 		return _count;
+	}
+	
+	public DataProcessSettings getDataProcessSettings() {
+		return _setting;
 	}
 	
 	public void run() {
@@ -160,7 +167,7 @@ public class DataProcessor implements Runnable {
 		if(ditectedSpikeInfo != null) {
 			
 			//	振幅がしきい値未満なら棄却する
-			if(ditectedSpikeInfo.amp < _minimumAmp) {
+			if(ditectedSpikeInfo.amp < _setting.getMiminimumAmp()) {
 				ditectedSpikeInfo.status = SpikeInfo.STATUS_REJECT_SMALL;
 			}
 			//	歩数として採用する

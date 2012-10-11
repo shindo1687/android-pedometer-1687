@@ -10,18 +10,24 @@ import android.util.Log;
 public class Logger {
 	
 	static private final String TAG = "##";
+	static private boolean _enableLogOutput = true;
+	static private boolean _enableFileOutput = false;
 	
 	static public void log(String msg) {
-    	Log.v(TAG, msg);
+		if(_enableLogOutput) {
+			Log.v(TAG, msg);
+		}
     }
 	 
    static public void logWithFile(String msg) {
     	try {
-    		Log.v(TAG, msg);
-    		msg = "[" + getTimeStamp() + "]: " + msg + "\n";
-	    	FileOutputStream output = new FileOutputStream(getLogFile(), true);
-	    	output.write(msg.getBytes());
-	    	output.close();
+    		log(msg);
+    		if(_enableFileOutput) {
+	    		msg = "[" + getTimeStamp() + "]: " + msg + "\n";
+		    	FileOutputStream output = new FileOutputStream(getLogFile(), true);
+		    	output.write(msg.getBytes());
+		    	output.close();
+    		}
     	}
     	catch(Exception e) {
     		e.printStackTrace();

@@ -22,9 +22,21 @@ public class GraphView implements SurfaceHolder.Callback, Runnable {
 	private int _dataGap = 4;
 	private int _strokeWidth = 2;
 	
+	class DrawInfo {
+		public SensorData	_sensorData = null;
+		public boolean		_isSpikeBegin = false;
+		public boolean		_isSpikeTop = false;
+		public boolean		_isSpikeEnd = false;
+		
+		DrawInfo(SensorData sensorData) {
+			_sensorData = sensorData;
+		}
+	}
+	
 	private SurfaceHolder _surfaceHolder = null;
 	private Thread	_thread = null;
-	private ArrayBlockingQueue<Double> _dataQueue = null;
+	private ArrayBlockingQueue<DrawInfo> _dataQueue = null;
+	private DataProcessSettings _setting = null;
 	
 	public GraphView(Context context) {
 	}
@@ -35,7 +47,7 @@ public class GraphView implements SurfaceHolder.Callback, Runnable {
 		_width = width;
 		_height = height;
 		_dataNum = _width / _dataGap;
-		_dataQueue = new ArrayBlockingQueue<Double>(_dataNum);
+		_dataQueue = new ArrayBlockingQueue<DrawInfo>(_dataNum);
 		if(_thread != null && _thread.isAlive() == false) {
 			_thread.start();
 		}
@@ -45,7 +57,6 @@ public class GraphView implements SurfaceHolder.Callback, Runnable {
 	public void surfaceCreated(SurfaceHolder holder) {
 		Logger.logWithFile("GraphView.surfaceCreated()");
 		_surfaceHolder = holder;
-		_dataQueue = new ArrayBlockingQueue<Double>(1);
 		_thread = new Thread(this);
 	}
 
@@ -60,42 +71,15 @@ public class GraphView implements SurfaceHolder.Callback, Runnable {
 		try {
 			while(_thread != null) {
 				Canvas canvas = _surfaceHolder.lockCanvas();
-				canvas.drawColor(Color.GRAY);
-				
-				Iterator<Double> iterator = _dataQueue.iterator();
-				float[] drawPoints = new float[_dataNum * 4];
-				int index = 0;
-				int prevX = 0;
-				int prevY = _height;
-				while(iterator.hasNext()) {
-					int x = index * _dataGap;
-					int y = calcY(iterator.next());
-					drawPoints[index * 4] = prevX;	
-					drawPoints[(index * 4) + 1] = prevY;
-					drawPoints[(index * 4) + 2] = x;	
-					drawPoints[(index * 4) + 3] = y;
-					index++;
-					prevX = x;
-					prevY = y;
+				if(canvas != null) {
+					canvas.drawColor(Color.GRAY);
+					
+					drawDaraProcessSettings(canvas);
+					drawSensorData(canvas);
+					
+					_surfaceHolder.unlockCanvasAndPost(canvas);
 				}
-				while(index < _dataNum) {
-					int x = index * _dataGap;
-					drawPoints[index * 4] = prevX;
-					drawPoints[(index * 4) + 1] = _height;
-					drawPoints[(index * 4) + 2] = x;	
-					drawPoints[(index * 4) + 3] = _height;
-					index++;
-					prevX = x;
-				}
-				
-				Paint paint = new Paint();
-				paint.setColor(Color.GREEN);
-				paint.setStrokeWidth(_strokeWidth);
-				canvas.drawLines(drawPoints, paint);
-				
-				_surfaceHolder.unlockCanvasAndPost(canvas);
-				
-				Thread.sleep(100);
+				Thread.sleep(50);
 			}
 		}
 		catch(Exception e) {
@@ -104,23 +88,117 @@ public class GraphView implements SurfaceHolder.Callback, Runnable {
 		}
 	}
 
-	public void drawSensorData(SensorData data) {
+	public void setSensorData(SensorData data) {
 		//	データをキューに追加
 		if(_dataQueue.size() >= _dataNum) {
 			_dataQueue.poll();
 		}
-		_dataQueue.offer(new Double(data.data()));
+		_dataQueue.offer(new DrawInfo(data));
 	}
 	
-	private void drawSpikeInfo(SpikeInfo info) {
+	public void setDataProcessSettings(DataProcessSettings setting) {
+		_setting = setting;
+	}
+	
+	public void setSpikeInfo(SpikeInfo spikeInfo) {
+		Iterator<DrawInfo> iterator = _dataQueue.iterator();
+		while(iterator.hasNext()) {
+			DrawInfo drawInfo = iterator.next();
+			long time = drawInfo._sensorData.time();
+			if(time == spikeInfo.beginTime) {
+				drawInfo._isSpikeBegin = true;
+			}
+			else if(time == spikeInfo.maxTime) {
+				drawInfo._isSpikeTop = true;
+			}
+			else if(time == spikeInfo.endTime) {
+				drawInfo._isSpikeEnd = true;
+				break;	//	これ以上は無駄なのでループを抜ける
+			}
+		}
+	}
+	
+	/**
+	 * 計測データを描画する
+	 * @param canvas
+	 */
+	private void drawSensorData(Canvas canvas) {
+		if(_dataQueue == null) {
+			return;
+		}
 		
+		int index = 0;
+		int prevX = 0;
+		int prevY = _height;
+		Iterator<DrawInfo> iterator = _dataQueue.iterator();
+		while(iterator.hasNext()) {
+			DrawInfo drawInfo = iterator.next();
+			SensorData sensorData = drawInfo._sensorData;
+			
+			//	このデータのx,y座標
+			int x = index * _dataGap;
+			int y = calcY(sensorData.data());
+			
+			//	前のデータからこのデータまで線を引く
+			float[] drawPoints = {prevX, prevY, x, y};
+			Paint paint = new Paint();
+			paint.setColor(Color.GREEN);
+			paint.setStrokeWidth(_strokeWidth);
+			canvas.drawLines(drawPoints, paint);
+			
+			index++;
+			prevX = x;
+			prevY = y;
+			
+			//	山の情報を描画
+			if(drawInfo._isSpikeTop) {
+				drawPoint(canvas, x, y, Color.BLUE, 5);
+			}
+		}
 	}
 	
+	/**
+	 * 点を描画する
+	 * @param canvas
+	 * @param x
+	 * @param y
+	 * @param color
+	 * @param strokeWidth
+	 */
+	private void drawPoint(Canvas canvas, float x, float y, int color, int strokeWidth) {
+		Paint paint = new Paint();
+		paint.setColor(color);
+		paint.setStrokeWidth(strokeWidth);
+		canvas.drawPoint(x, y, paint);
+	}
+	
+	/**
+	 * データ処理設定を描画する
+	 * @param canvas
+	 */
+	private void drawDaraProcessSettings(Canvas canvas) {
+		if(_setting == null) {
+			return;
+		}
+		
+		float y = calcY(_setting.getMiminimumAmp());
+		float[] drawPoints = {0, y, _width, y};
+		
+		Paint paint = new Paint();
+		paint.setColor(Color.RED);
+		paint.setStrokeWidth(2);
+		canvas.drawLines(drawPoints, paint);
+	}
+	
+	
+	/**
+	 * 計測値のy座標を計算する
+	 * @param data
+	 * @return
+	 */
 	private int calcY(double data) {
 		double max = 10;
 		int y = _height - (int)((double)_height / max * data);
 		return y;
 	}
-
-
 }
