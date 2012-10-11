@@ -40,7 +40,6 @@ public class SensorService extends Service {
 	
 	int				_counter = 0;
 	int				_startId = 0;
-	long			_startTime = 0; 	//	計測開始時刻
 	
 	Preferences		_preferences = null;
 	DataProcessor	_dataProcessor = null;
@@ -71,6 +70,11 @@ public class SensorService extends Service {
     //	サーバに現在の歩数を送信するよう要求
     static final int MSG_GET_COUNT = 21;
     
+    //	クライアントに減税のデータ処理設定を送信
+    static final int MSG_SET_DATA_PROC_SETTING = 22;
+    //	サーバに現在のデータ処理設定を送信するよう要求
+    static final int MSG_GET_DATA_PROC_SETTING = 23;
+    
     /**
      * Handler of incoming messages from clients.
      */
@@ -98,6 +102,9 @@ public class SensorService extends Service {
                 	int count = _dataProcessor.getCount();
                 	_clientMessenger.sendMessage(Message.obtain(null, MSG_SET_COUNT, count, 0));
                 	break;
+                case MSG_GET_DATA_PROC_SETTING:
+                	DataProcessSettings settings = _dataProcessor.getDataProcessSettings();
+                	_clientMessenger.sendMessage(Message.obtain(null, MSG_SET_DATA_PROC_SETTING, settings));
                 default:
                     super.handleMessage(msg);
             }
@@ -128,7 +135,6 @@ public class SensorService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
     	Logger.logWithFile("SensorService.onStartCommand(): start id " + startId + ": " + intent);
     	_startId = startId;
-    	_startTime = System.currentTimeMillis();
     	
     	//	センサーの値取得を開始する
     	registSensorListener();
@@ -186,15 +192,19 @@ public class SensorService extends Service {
 	    	Logger.logWithFile("onSensorChanged()");
 	    	_counter += 1;
 	    	
-	    	String id = _startId + ":" + _counter; 
+	    	//	データの一意なID
+	    	String id = _startId + ":" + _counter;
 	    	
+	    	//	timestampは細かすぎる(10^-9)のでミリ秒(10^-3)に切り捨てる
+	    	long time = event.timestamp / 1000000;
+	    	
+	    	//	xyz空間の原点からの距離に変換
 	    	float value1 = event.values[0];
 	    	float value2 = event.values[1];
 	    	float value3 = event.values[2];
 	    	double distance = Math.sqrt(Math.pow(value1, 2) + Math.pow(value2, 2) + Math.pow(value3, 2));
-	    	//Logger.logWithFile(String.format("%s [%.3f]", id, distance));	
 	    	
-	    	long time = System.currentTimeMillis() - _startTime;
+	    	//Logger.logWithFile(String.format("%s [%.3f]", id, distance));	
 	    
 	    	//	DataProcessorのキューに計測値を追加する
 	    	try {
