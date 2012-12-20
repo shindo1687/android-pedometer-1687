@@ -1,7 +1,5 @@
 package com.example.test1;
 
-import com.example.test1.DataProcessor.SpikeInfo;
-
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
@@ -73,18 +71,18 @@ public class MainActivity extends Activity {
                 	break;
                 }
                 case SensorService.MSG_SEND_SPIKE_DATA: {
-                	SpikeInfo spikeInfo = (SpikeInfo)msg.obj;
+                	SpikeData spikeData = (SpikeData)msg.obj;
                 	String logstr = String.format("[%d] [%d, %.3f] (%d:%.3f, %d:%.3f, %d:%.3f)", 
-            				spikeInfo.status, spikeInfo.length, spikeInfo.amp, 
-            				spikeInfo.beginTime, spikeInfo.beginValue,
-            				spikeInfo.maxTime - spikeInfo.beginTime, spikeInfo.maxValue,
-            				spikeInfo.endTime - spikeInfo.maxTime, spikeInfo.endValue);
+                			spikeData.getStatus(), spikeData.getLength(), spikeData.getAmp(), 
+                			spikeData.getBeginTime(), spikeData.getBeginValue(),
+                			spikeData.getMaxTime() - spikeData.getBeginTime(), spikeData.getMaxValue(),
+                			spikeData.getEndTime() - spikeData.getMaxTime(), spikeData.getEndValue());
                 	Logger.log(logstr);
                 	if(_toggleButton.isChecked()) {
                 		outputText(2, logstr);
                 	}
                 	if(_graphView != null) {
-                		_graphView.setSpikeInfo(spikeInfo);
+                		_graphView.setSpikeData(spikeData);
                 	}
                 	break;	
                 }

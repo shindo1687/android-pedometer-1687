@@ -3,8 +3,6 @@ package com.example.test1;
 import java.util.Iterator;
 import java.util.concurrent.ArrayBlockingQueue;
 
-import com.example.test1.DataProcessor.SpikeInfo;
-
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -100,18 +98,18 @@ public class GraphView implements SurfaceHolder.Callback, Runnable {
 		_setting = setting;
 	}
 	
-	public void setSpikeInfo(SpikeInfo spikeInfo) {
+	public void setSpikeData(SpikeData spikeData) {
 		Iterator<DrawInfo> iterator = _dataQueue.iterator();
 		while(iterator.hasNext()) {
 			DrawInfo drawInfo = iterator.next();
 			long time = drawInfo._sensorData.time();
-			if(time == spikeInfo.beginTime) {
+			if(time == spikeData.getBeginTime()) {
 				drawInfo._isSpikeBegin = true;
 			}
-			else if(time == spikeInfo.maxTime) {
+			else if(time == spikeData.getMaxTime()) {
 				drawInfo._isSpikeTop = true;
 			}
-			else if(time == spikeInfo.endTime) {
+			else if(time == spikeData.getEndTime()) {
 				drawInfo._isSpikeEnd = true;
 				break;	//	Ç±ÇÍà»è„ÇÕñ≥ë Ç»ÇÃÇ≈ÉãÅ[ÉvÇî≤ÇØÇÈ
 			}
